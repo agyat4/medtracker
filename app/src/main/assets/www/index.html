@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MedTracker</title>
+<style>
+  /* Layout: an amber pill bottle. The page is the glass, each section is a white
+     pharmacy label, the MARK button is the child-safe cap, warnings are the
+     coloured auxiliary stickers pharmacists put on bottles.
+     One fixed look on purpose (not light/dark). */
+  @font-face { font-family: "Barlow Condensed"; font-weight: 600; font-display: swap; src: url("fonts/barlow-condensed-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Barlow Condensed"; font-weight: 700; font-display: swap; src: url("fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url("fonts/barlow-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Barlow"; font-weight: 500; font-display: swap; src: url("fonts/barlow-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Barlow"; font-weight: 600; font-display: swap; src: url("fonts/barlow-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 500; font-display: swap; src: url("fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "JetBrains Mono"; font-weight: 700; font-display: swap; src: url("fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2"); }
+
+  :root {
+    --glass-top: #5b2d0d;      /* amber bottle, lit from above */
+    --glass: #2b1507;          /* amber bottle, body */
+    --glass-deep: #180b03;
+    --glass-text: #ffe4c7;     /* text printed straight on the glass */
+    --glass-muted: #c99a72;
+    --label: #fdfcf9;          /* label paper */
+    --ink: #17130f;            /* label printer ink */
+    --ink-soft: #6e655c;
+    --rule: #ddd7cd;
+    --cap: #f2f1ee;
+    --cap-ridge: #d2cfc8;
+    --cap-side: #a9a59c;
+    --orange: #ff6a13;         /* "take with food" orange sticker */
+    --yellow: #ffd60a;         /* caution sticker */
+    --red: #e3242b;            /* danger sticker */
+    --green: #1d7f47;
+    --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+    --font-body: "Barlow", "Segoe UI", Roboto, Arial, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+
+  [hidden] { display: none !important; }
+  * { box-sizing: border-box; }
+  html { background: var(--glass-deep); }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--glass);
+    background-image: linear-gradient(180deg, var(--glass-top) 0%, var(--glass) 38%, var(--glass-deep) 100%);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.4;
+    padding: 18px 16px 36px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+
+  /* ---------- Header, printed on the glass ---------- */
+  .masthead { color: var(--glass-text); display: flex; flex-direction: column; gap: 2px; padding: 0 2px; }
+  .masthead h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 2.1rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .masthead p {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--glass-muted);
+  }
+
+  /* ---------- The cap (MARK button) ---------- */
+  .cap-zone { display: flex; justify-content: center; padding: 6px 0 14px; }
+
+  .cap {
+    position: relative;
+    width: 224px;
+    height: 224px;
+    border-radius: 50%;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    background: repeating-conic-gradient(var(--cap) 0deg 3.5deg, var(--cap-ridge) 3.5deg 7deg);
+    box-shadow: 0 10px 0 var(--cap-side), 0 22px 34px rgba(0, 0, 0, 0.55);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+    font-family: inherit;
+    color: var(--ink);
+  }
+  .cap:active { transform: translateY(8px); box-shadow: 0 2px 0 var(--cap-side), 0 8px 16px rgba(0, 0, 0, 0.5); }
+  .cap:focus-visible { outline: 3px solid var(--orange); outline-offset: 6px; }
+
+  .cap-top {
+    position: absolute;
+    inset: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 30%, #ffffff 0%, var(--cap) 55%, #e4e2dd 100%);
+    box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.12), inset 0 2px 3px rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .cap-arc { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .cap-arc text { font-family: var(--font-mono); font-size: 10.5px; font-weight: 700; letter-spacing: 2.5px; fill: var(--ink-soft); }
+  .cap-word { font-family: var(--font-display); font-weight: 700; font-size: 3rem; line-height: 0.9; letter-spacing: 0.05em; margin-top: 10px; }
+  .cap-sub { font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+  .cap-since {
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--orange);
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  /* ---------- Labels (cards) ---------- */
+  .label {
+    background: var(--label);
+    border-radius: 6px;
+    padding: 14px 16px 16px;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 6px 18px rgba(0, 0, 0, 0.35);
+    color-scheme: light;
+  }
+  .label-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding-bottom: 6px;
+    border-bottom: 3px solid var(--ink);
+    margin-bottom: 12px;
+  }
+  .label-head h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.35rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .meta { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 500; color: var(--ink-soft); text-transform: uppercase; }
+
+  /* ---------- Reminder dial ---------- */
+  .dial-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .dial { width: 236px; max-width: 100%; height: auto; touch-action: none; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .dial .face { fill: var(--label); stroke: var(--rule); stroke-width: 1; }
+  .dial .rim { fill: none; stroke: var(--rule); stroke-width: 9; }
+  .dial .arc { fill: none; stroke: var(--orange); stroke-width: 9; stroke-linecap: butt; }
+  .dial .tick { stroke: var(--ink); stroke-width: 1.2; opacity: 0.35; }
+  .dial .tick.major { stroke-width: 2.4; opacity: 1; }
+  .dial .label-num { fill: var(--ink); font-family: var(--font-mono); font-weight: 700; font-size: 12px; }
+  .dial .hand { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+  .dial .knob { fill: var(--orange); stroke: var(--ink); stroke-width: 2.5; }
+  .dial .hub { fill: var(--ink); }
+  .dial .center-1 { fill: var(--ink); font-family: var(--font-mono); font-weight: 700; font-size: 18px; }
+  .dial .center-2 { fill: var(--ink-soft); font-family: var(--font-body); font-weight: 500; font-size: 11px; }
+  .dial .is-hidden { display: none; }
+
+  .status {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    text-align: center;
+  }
+  .status.active { color: var(--ink); background: var(--orange); padding: 5px 10px; border-radius: 4px; font-weight: 700; }
+
+  .or-line {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 0 10px;
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .or-line::before, .or-line::after { content: ""; flex: 1; border-top: 1px dashed var(--ink-soft); opacity: 0.6; }
+
+  .alarm-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .alarm-row input {
+    flex: 1 1 180px;
+    min-width: 0;
+    padding: 10px 10px;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    background: var(--label);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+  }
+
+  .btn {
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: var(--ink);
+    color: var(--label);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+  .btn-plain { background: transparent; color: var(--ink); }
+  .btn-small { padding: 4px 10px; font-size: 0.9rem; }
+
+  .form-error { margin: 8px 0 0; color: var(--red); font-weight: 600; font-size: 0.88rem; }
+  .fine-print { margin: 12px 0 0; font-size: 0.8rem; color: var(--ink-soft); }
+
+  /* ---------- Alarm setup checklist (app only) ---------- */
+  .setup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .setup-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .setup-item strong { display: block; font-weight: 600; }
+  .setup-item span { font-size: 0.82rem; color: var(--ink-soft); }
+  .setup-ok { font-family: var(--font-mono); font-weight: 700; color: var(--green); font-size: 0.8rem; }
+
+  /* ---------- Dose log lines ---------- */
+  .columns {
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+    margin: -4px 30px 4px 0;
+  }
+  .dose-list { list-style: none; margin: 0; padding: 0; }
+  .dose-line { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--rule); }
+  .dose-line:last-child { border-bottom: none; }
+  .dose-time { font-family: var(--font-mono); font-weight: 700; font-size: 1rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .leader { flex: 1; min-width: 12px; border-bottom: 2px dotted var(--rule); transform: translateY(-4px); }
+  .dose-gap { font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .x-btn {
+    width: 30px; height: 30px; flex: none;
+    border: none; background: none; cursor: pointer;
+    color: var(--ink-soft); font-size: 1.1rem; line-height: 1; border-radius: 4px;
+  }
+  .x-btn:active { background: var(--rule); }
+  .empty { margin: 0; padding: 10px 0 2px; color: var(--ink-soft); font-size: 0.92rem; text-align: center; }
+
+  .day { border-bottom: 1px solid var(--rule); }
+  .day:last-child { border-bottom: none; }
+  .day summary {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; cursor: pointer; list-style: none;
+    font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .day summary::-webkit-details-marker { display: none; }
+  .day summary .meta { margin-left: auto; }
+  .day summary::after { content: "+"; font-family: var(--font-mono); font-size: 1.1rem; width: 30px; text-align: center; color: var(--ink-soft); }
+  .day[open] summary::after { content: "–"; }
+  .day .dose-list { padding: 0 0 8px 12px; border-left: 3px solid var(--ink); margin-bottom: 8px; }
+
+  /* ---------- Stickers (confirm pop-up) ---------- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(12, 5, 1, 0.78);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .sticker {
+    width: 100%; max-width: 340px;
+    background: var(--label);
+    color: var(--ink);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+    transform: rotate(-1.2deg);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
+  }
+  .sticker h3 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; line-height: 1.05; letter-spacing: 0.03em; text-transform: uppercase; }
+  .sticker p { margin: 0; font-size: 1rem; }
+  .sticker-buttons { display: flex; gap: 10px; margin-top: 8px; }
+  .sticker-buttons .btn { flex: 1; }
+  .sticker[data-tone="warning"] { background: var(--yellow); }
+  .sticker[data-tone="danger"] { background: var(--red); color: #fff; }
+  .sticker[data-tone="danger"] .btn { border-color: #fff; }
+  .sticker[data-tone="danger"] .btn-plain { color: #fff; }
+  .sticker[data-tone="danger"] .btn:not(.btn-plain) { background: #fff; color: var(--red); }
+
+  /* ---------- Alarm screen (web version only) ---------- */
+  .alarm-screen {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--orange);
+    color: var(--ink);
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 14px;
+    padding: 28px 24px;
+  }
+  .alarm-screen .kicker { font-family: var(--font-mono); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.8rem; }
+  .alarm-screen h3 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 3.4rem; line-height: 0.92; text-transform: uppercase; }
+  .alarm-screen p { margin: 0; font-size: 1.05rem; font-weight: 500; }
+  .alarm-screen .btn { padding: 16px; font-size: 1.3rem; }
+  .alarm-screen .btn-plain { border-color: var(--ink); }
+  .alarm-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .alarm-screen h3 { animation: pulse 1s ease-in-out infinite; }
+  }
+  @keyframes pulse { 50% { opacity: 0.55; } }
+</style>
+</head>
+<body>
+
+<main class="app">
+  <header class="masthead">
+    <h1>MedTracker</h1>
+    <p id="todayLabel">Rx · dose log</p>
+  </header>
+
+  <!-- The cap: tap to log a dose -->
+  <div class="cap-zone">
+    <button class="cap" id="markBtn" type="button" aria-label="Mark: I took my medicine">
+      <span class="cap-top">
+        <svg class="cap-arc" viewBox="0 0 200 200" aria-hidden="true">
+          <path id="capArcPath" d="M 24,100 A 76,76 0 1,1 176,100" fill="none"/>
+          <text><textPath href="#capArcPath" startOffset="50%" text-anchor="middle">PUSH DOWN TO MARK</textPath></text>
+        </svg>
+        <span class="cap-word">MARK</span>
+        <span class="cap-sub">I took my med</span>
+        <span class="cap-since" id="sinceLast">No doses yet</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Alarm setup checklist: only shown in the Android app when something is missing -->
+  <section class="label" id="setupCard" hidden>
+    <div class="label-head">
+      <h2>Alarm setup</h2>
+      <span class="meta">Needed once</span>
+    </div>
+    <ul class="setup-list" id="setupList"></ul>
+  </section>
+
+  <!-- Reminder -->
+  <section class="label">
+    <div class="label-head">
+      <h2>Reminder</h2>
+      <button class="btn btn-plain btn-small" id="clearReminderBtn" type="button" hidden>Clear</button>
+    </div>
+
+    <div class="dial-wrap">
+      <svg class="dial" id="dial" viewBox="0 0 240 240" role="img" aria-label="Reminder dial: tap or drag to choose how many hours from now">
+        <circle class="face" cx="120" cy="120" r="119"/>
+        <circle class="rim" cx="120" cy="120" r="110"/>
+        <circle class="arc is-hidden" id="dialArc" cx="120" cy="120" r="110" transform="rotate(-90 120 120)"/>
+        <g id="dialTicks"></g>
+        <g id="handGroup" class="is-hidden">
+          <line class="hand" id="dialHand" x1="120" y1="120" x2="120" y2="50"/>
+          <circle class="knob" id="dialKnob" cx="120" cy="50" r="9"/>
+        </g>
+        <circle class="hub" cx="120" cy="120" r="4.5"/>
+        <text class="center-1" id="centerLine1" x="120" y="152" text-anchor="middle">Tap or drag</text>
+        <text class="center-2" id="centerLine2" x="120" y="168" text-anchor="middle">hours from now</text>
+      </svg>
+      <p class="status" id="reminderStatus">No reminder set</p>
+    </div>
+
+    <div class="or-line">or an exact time</div>
+
+    <div class="alarm-row">
+      <input type="datetime-local" id="alarmInput" aria-label="Reminder date and time">
+      <button class="btn" id="setAlarmBtn" type="button">Set</button>
+    </div>
+    <p class="form-error" id="alarmError" hidden></p>
+    <p class="fine-print" id="alarmNote">This page can only ring while it is open on your screen.</p>
+  </section>
+
+  <!-- Today -->
+  <section class="label">
+    <div class="label-head">
+      <h2>Today</h2>
+      <span class="meta" id="todayCount">0 doses</span>
+    </div>
+    <div class="columns" id="todayColumns" hidden><span>Time</span><span>Gap from previous</span></div>
+    <ul class="dose-list" id="todayList"></ul>
+  </section>
+
+  <!-- Earlier days -->
+  <section class="label">
+    <div class="label-head">
+      <h2>Earlier days</h2>
+      <span class="meta" id="pastCount"></span>
+    </div>
+    <div id="pastDays"></div>
+  </section>
+</main>
+
+<!-- Confirm sticker (warnings and remove) -->
+<div class="overlay" id="confirmOverlay" hidden>
+  <div class="sticker" id="confirmSticker" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p id="confirmMessage"></p>
+    <div class="sticker-buttons">
+      <button class="btn btn-plain" id="confirmCancel" type="button">Cancel</button>
+      <button class="btn" id="confirmOk" type="button">Yes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Alarm screen (used only when running as a web page) -->
+<div class="alarm-screen" id="alarmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="alarmTitle" hidden>
+  <span class="kicker">Reminder</span>
+  <h3 id="alarmTitle">Take your medicine</h3>
+  <p id="alarmDueText"></p>
+  <p id="soundHint" hidden>Tap the screen to turn the sound on.</p>
+  <div class="alarm-buttons">
+    <button class="btn" id="alarmTookBtn" type="button">I took it</button>
+    <button class="btn btn-plain" id="alarmDismissBtn" type="button">Dismiss</button>
+  </div>
+</div>
+
+<script>
+  /* =========================================================
+     Constants and helpers
+     ========================================================= */
+  const MINUTE = 60 * 1000;
+  const HOUR = 60 * MINUTE;
+  const $ = (id) => document.getElementById(id);
+
+  // In the Android app, Java code adds a "MedAndroid" object to the page.
+  // In a normal browser it does not exist.
+  const native = window.MedAndroid || null;
+
+  /* =========================================================
+     Storage
+     ========================================================= */
+  function loadData(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function saveData(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {}
+  }
+
+  /* =========================================================
+     State
+     ========================================================= */
+  let doses = loadData('med_doses', []);
+  if (!Array.isArray(doses)) doses = [];
+  doses = doses.filter((t) => typeof t === 'number').sort((a, b) => b - a);
+
+  let reminder = loadData('med_reminder', null);
+  if (typeof reminder === 'number') reminder = { at: reminder, done: reminder <= Date.now() };
+  if (!reminder || typeof reminder.at !== 'number') reminder = null;
+
+  let renderedDay = null;
+  let draftHours = null;
+  let ringTimer = null;
+  let audioCtx = null;
+  let confirmAction = null;
+
+  function saveDoses() { saveData('med_doses', doses); }
+  function saveReminder() { saveData('med_reminder', reminder); }
+
+  /* =========================================================
+     Time formatting
+     ========================================================= */
+  function formatTime(ts) {
+    return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function dayKey(ts) {
+    const d = new Date(ts);
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function shiftDays(n) {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.getTime();
+  }
+
+  function dayLabel(ts) {
+    const key = dayKey(ts);
+    if (key === dayKey(Date.now())) return 'Today';
+    if (key === dayKey(shiftDays(1))) return 'Tomorrow';
+    if (key === dayKey(shiftDays(-1))) return 'Yesterday';
+    return new Date(ts).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  function formatWhen(ts) {
+    const label = dayLabel(ts);
+    return label === 'Today' ? formatTime(ts) : label + ' ' + formatTime(ts);
+  }
+
+  function formatDuration(ms, roundUp) {
+    const totalMin = Math.max(0, roundUp ? Math.ceil(ms / MINUTE) : Math.floor(ms / MINUTE));
+    const d = Math.floor(totalMin / 1440);
+    const h = Math.floor((totalMin % 1440) / 60);
+    const m = totalMin % 60;
+    if (d > 0) return d + 'd ' + h + 'h';
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm';
+  }
+
+  function toInputValue(ts) {
+    const d = new Date(ts);
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+           'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  /* =========================================================
+     Confirm sticker
+     ========================================================= */
+  function openConfirm({ title, message, confirmLabel, tone, onConfirm }) {
+    $('confirmTitle').textContent = title;
+    $('confirmMessage').textContent = message;
+    $('confirmOk').textContent = confirmLabel;
+    $('confirmSticker').dataset.tone = tone || '';
+    confirmAction = onConfirm;
+    $('confirmOverlay').hidden = false;
+  }
+
+  function closeConfirm() {
+    $('confirmOverlay').hidden = true;
+    confirmAction = null;
+  }
+
+  $('confirmCancel').addEventListener('click', closeConfirm);
+  $('confirmOk').addEventListener('click', () => {
+    const action = confirmAction;
+    closeConfirm();
+    if (action) action();
+  });
+  $('confirmOverlay').addEventListener('click', (e) => {
+    if (e.target === $('confirmOverlay')) closeConfirm();
+  });
+
+  /* =========================================================
+     Logging doses
+     ========================================================= */
+  function tryRecordDose() {
+    if (doses.length > 0) {
+      const sinceMs = Date.now() - doses[0];
+      const hoursSince = sinceMs / HOUR;
+      if (hoursSince < 3) {
+        openConfirm({
+          title: 'Under 3 hours since last dose',
+          message: 'Your last dose was ' + formatDuration(sinceMs) + ' ago. Taking medicine this close together can be dangerous. Log another dose anyway?',
+          confirmLabel: 'Log dose',
+          tone: 'danger',
+          onConfirm: recordDose
+        });
+        return;
+      }
+      if (hoursSince < 6) {
+        openConfirm({
+          title: 'Under 6 hours since last dose',
+          message: 'Your last dose was ' + formatDuration(sinceMs) + ' ago. The usual gap is longer. Log another dose anyway?',
+          confirmLabel: 'Log dose',
+          tone: 'warning',
+          onConfirm: recordDose
+        });
+        return;
+      }
+    }
+    recordDose();
+  }
+
+  function recordDose() {
+    doses.unshift(Date.now());
+    saveDoses();
+    renderDoses();
+  }
+
+  function askRemoveDose(ts) {
+    openConfirm({
+      title: 'Remove this dose?',
+      message: dayLabel(ts) + ' at ' + formatTime(ts) + ' will be deleted from your history.',
+      confirmLabel: 'Remove',
+      tone: '',
+      onConfirm: () => {
+        const index = doses.indexOf(ts);
+        if (index !== -1) {
+          doses.splice(index, 1);
+          saveDoses();
+          renderDoses();
+        }
+      }
+    });
+  }
+
+  $('markBtn').addEventListener('click', tryRecordDose);
+
+  /* =========================================================
+     Dose log
+     ========================================================= */
+  function buildDoseLine(ts) {
+    const older = doses[doses.indexOf(ts) + 1];
+
+    const li = document.createElement('li');
+    li.className = 'dose-line';
+
+    const time = document.createElement('span');
+    time.className = 'dose-time';
+    time.textContent = formatTime(ts);
+
+    const leader = document.createElement('span');
+    leader.className = 'leader';
+
+    const gap = document.createElement('span');
+    gap.className = 'dose-gap';
+    gap.textContent = older !== undefined ? '+' + formatDuration(ts - older) : 'first';
+
+    const remove = document.createElement('button');
+    remove.className = 'x-btn';
+    remove.type = 'button';
+    remove.textContent = '✕';
+    remove.setAttribute('aria-label', 'Remove dose at ' + formatTime(ts));
+    remove.addEventListener('click', () => askRemoveDose(ts));
+
+    li.append(time, leader, gap, remove);
+    return li;
+  }
+
+  function doseWord(n) { return n + (n === 1 ? ' dose' : ' doses'); }
+
+  function renderDoses() {
+    const todayKey = dayKey(Date.now());
+
+    const groups = new Map();
+    doses.forEach((ts) => {
+      const key = dayKey(ts);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(ts);
+    });
+
+    // Today
+    const todays = groups.get(todayKey) || [];
+    $('todayCount').textContent = doseWord(todays.length);
+    $('todayColumns').hidden = todays.length === 0;
+    const todayList = $('todayList');
+    todayList.replaceChildren();
+    if (todays.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'empty';
+      empty.textContent = 'Nothing logged yet today. Push the cap when you take a dose.';
+      todayList.append(empty);
+    } else {
+      todays.forEach((ts) => todayList.append(buildDoseLine(ts)));
+    }
+
+    // Earlier days
+    const pastDays = $('pastDays');
+    const openDays = new Set([...pastDays.querySelectorAll('details[open]')].map((el) => el.dataset.day));
+    pastDays.replaceChildren();
+    let dayCount = 0;
+
+    groups.forEach((list, key) => {
+      if (key === todayKey) return;
+      dayCount++;
+      const details = document.createElement('details');
+      details.className = 'day';
+      details.dataset.day = key;
+      if (openDays.has(key)) details.open = true;
+
+      const summary = document.createElement('summary');
+      const name = document.createElement('span');
+      name.textContent = dayLabel(list[0]);
+      const count = document.createElement('span');
+      count.className = 'meta';
+      count.textContent = doseWord(list.length);
+      summary.append(name, count);
+
+      const ul = document.createElement('ul');
+      ul.className = 'dose-list';
+      list.forEach((ts) => ul.append(buildDoseLine(ts)));
+
+      details.append(summary, ul);
+      pastDays.append(details);
+    });
+
+    $('pastCount').textContent = dayCount > 0 ? dayCount + (dayCount === 1 ? ' day' : ' days') : '';
+    if (dayCount === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = 'Past days show up here after midnight.';
+      pastDays.append(empty);
+    }
+
+    $('todayLabel').textContent = 'Rx · dose log · ' +
+      new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+    renderedDay = todayKey;
+    updateSinceLast();
+  }
+
+  function updateSinceLast() {
+    const el = $('sinceLast');
+    if (doses.length === 0) {
+      el.textContent = 'No doses yet';
+      return;
+    }
+    const ago = Date.now() - doses[0];
+    el.textContent = ago < MINUTE ? 'Last: just now' : 'Last: ' + formatDuration(ago) + ' ago';
+  }
+
+  /* =========================================================
+     Reminder dial
+     ========================================================= */
+  const CENTER = 120;
+  const RIM_RADIUS = 110;
+  const RIM_LENGTH = 2 * Math.PI * RIM_RADIUS;
+
+  function pointAt(hours, radius) {
+    const radians = (hours / 24) * 2 * Math.PI - Math.PI / 2;
+    return { x: CENTER + radius * Math.cos(radians), y: CENTER + radius * Math.sin(radians) };
+  }
+
+  function drawDialMarks() {
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const group = $('dialTicks');
+    for (let h = 0; h < 24; h++) {
+      const major = h % 3 === 0;
+      const outer = pointAt(h, 102);
+      const inner = pointAt(h, major ? 91 : 97);
+      const tick = document.createElementNS(svgNS, 'line');
+      tick.setAttribute('class', major ? 'tick major' : 'tick');
+      tick.setAttribute('x1', inner.x); tick.setAttribute('y1', inner.y);
+      tick.setAttribute('x2', outer.x); tick.setAttribute('y2', outer.y);
+      group.append(tick);
+
+      if (major) {
+        const pos = pointAt(h, 78);
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('class', 'label-num');
+        label.setAttribute('x', pos.x);
+        label.setAttribute('y', pos.y + 4);
+        label.setAttribute('text-anchor', 'middle');
+        label.textContent = h === 0 ? '24' : String(h);
+        group.append(label);
+      }
+    }
+  }
+
+  function showHand(hours) {
+    const tip = pointAt(hours, 58);
+    $('dialHand').setAttribute('x2', tip.x);
+    $('dialHand').setAttribute('y2', tip.y);
+    $('dialKnob').setAttribute('cx', tip.x);
+    $('dialKnob').setAttribute('cy', tip.y);
+    $('dialArc').setAttribute('stroke-dasharray', (RIM_LENGTH * hours / 24) + ' ' + RIM_LENGTH);
+    $('handGroup').classList.remove('is-hidden');
+    $('dialArc').classList.remove('is-hidden');
+  }
+
+  function hideHand() {
+    $('handGroup').classList.add('is-hidden');
+    $('dialArc').classList.add('is-hidden');
+  }
+
+  function hasActiveReminder() {
+    return reminder !== null && !reminder.done;
+  }
+
+  function renderReminder() {
+    const now = Date.now();
+    const status = $('reminderStatus');
+
+    if (draftHours !== null) {
+      showHand(draftHours);
+      $('centerLine1').textContent = formatDuration(draftHours * HOUR);
+      $('centerLine2').textContent = 'at ' + formatTime(now + draftHours * HOUR);
+      status.textContent = 'Let go to set';
+      status.classList.remove('active');
+      return;
+    }
+
+    if (hasActiveReminder()) {
+      const left = Math.max(0, reminder.at - now);
+      showHand(Math.min(24, left / HOUR));
+      $('centerLine1').textContent = formatDuration(left, true);
+      $('centerLine2').textContent = 'at ' + formatTime(reminder.at);
+      status.textContent = 'Rings ' + formatWhen(reminder.at) + ' · in ' + formatDuration(left, true);
+      status.classList.add('active');
+      $('clearReminderBtn').hidden = false;
+    } else {
+      hideHand();
+      $('centerLine1').textContent = 'Tap or drag';
+      $('centerLine2').textContent = 'hours from now';
+      status.textContent = 'No reminder set';
+      status.classList.remove('active');
+      $('clearReminderBtn').hidden = true;
+    }
+  }
+
+  function setReminder(at) {
+    if (ringTimer !== null) stopRinging();
+    reminder = { at: at, done: false };
+    saveReminder();
+    if (native) native.scheduleAlarm(String(at));
+    renderReminder();
+  }
+
+  function clearReminder() {
+    reminder = null;
+    saveReminder();
+    if (native) native.cancelAlarm();
+    renderReminder();
+  }
+
+  function hoursFromPointer(event) {
+    const dial = $('dial');
+    const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(dial.getScreenCTM().inverse());
+    let degrees = Math.atan2(p.y - CENTER, p.x - CENTER) * 180 / Math.PI + 90;
+    if (degrees < 0) degrees += 360;
+    let steps = Math.round((degrees / 360) * 96);
+    if (steps === 0) steps = 96;
+    return steps / 4;
+  }
+
+  const dial = $('dial');
+  dial.addEventListener('pointerdown', (e) => {
+    dial.setPointerCapture(e.pointerId);
+    draftHours = hoursFromPointer(e);
+    renderReminder();
+  });
+  dial.addEventListener('pointermove', (e) => {
+    if (draftHours === null) return;
+    draftHours = hoursFromPointer(e);
+    renderReminder();
+  });
+  dial.addEventListener('pointerup', () => {
+    if (draftHours === null) return;
+    const hours = draftHours;
+    draftHours = null;
+    setReminder(Date.now() + hours * HOUR);
+  });
+  dial.addEventListener('pointercancel', () => {
+    draftHours = null;
+    renderReminder();
+  });
+
+  $('clearReminderBtn').addEventListener('click', clearReminder);
+
+  /* =========================================================
+     Exact-time reminder
+     ========================================================= */
+  function showAlarmError(text) {
+    $('alarmError').textContent = text;
+    $('alarmError').hidden = false;
+  }
+
+  $('setAlarmBtn').addEventListener('click', () => {
+    const value = $('alarmInput').value;
+    if (!value) {
+      showAlarmError('Pick a date and time first.');
+      return;
+    }
+    const at = new Date(value).getTime();
+    if (isNaN(at)) {
+      showAlarmError('That date could not be read. Pick it again.');
+      return;
+    }
+    if (at <= Date.now()) {
+      showAlarmError('That time has already passed. Pick a time in the future.');
+      return;
+    }
+    $('alarmError').hidden = true;
+    setReminder(at);
+  });
+
+  (function presetAlarmInput() {
+    const next = new Date();
+    next.setHours(next.getHours() + 1, 0, 0, 0);
+    $('alarmInput').value = toInputValue(next.getTime());
+  })();
+
+  /* =========================================================
+     Web-only alarm (sound while the page is open)
+     ========================================================= */
+  function unlockAudio() {
+    try {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        audioCtx = new Ctx();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(() => {
+          updateSoundHint();
+          if (ringTimer !== null) playAlarmPattern();
+        }).catch(() => {});
+      }
+    } catch (e) {}
+    updateSoundHint();
+  }
+
+  function soundReady() {
+    return audioCtx !== null && audioCtx.state === 'running';
+  }
+
+  function updateSoundHint() {
+    $('soundHint').hidden = ringTimer === null || soundReady();
+  }
+
+  function playAlarmPattern() {
+    if (soundReady()) {
+      const start = audioCtx.currentTime;
+      [0, 0.25, 0.5].forEach((offset) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, start + offset);
+        gain.gain.exponentialRampToValueAtTime(0.5, start + offset + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(start + offset);
+        osc.stop(start + offset + 0.22);
+      });
+    }
+    try {
+      if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+    } catch (e) {}
+  }
+
+  function startRinging() {
+    const late = Date.now() - reminder.at;
+    $('alarmDueText').textContent = late > 2 * MINUTE
+      ? 'Missed: it was due ' + formatWhen(reminder.at) + ', ' + formatDuration(late) + ' ago.'
+      : 'Due ' + formatWhen(reminder.at) + '.';
+    $('alarmOverlay').hidden = false;
+    playAlarmPattern();
+    ringTimer = setInterval(playAlarmPattern, 2500);
+    updateSoundHint();
+  }
+
+  function stopRinging() {
+    clearInterval(ringTimer);
+    ringTimer = null;
+    $('alarmOverlay').hidden = true;
+    markReminderDone();
+    updateSoundHint();
+  }
+
+  function markReminderDone() {
+    if (reminder) {
+      reminder.done = true;
+      saveReminder();
+    }
+    renderReminder();
+  }
+
+  function checkAlarm() {
+    if (!hasActiveReminder() || Date.now() < reminder.at) return;
+    if (native) {
+      // The phone's own alarm handles the ringing. Just close this reminder.
+      markReminderDone();
+    } else if (ringTimer === null) {
+      startRinging();
+    }
+  }
+
+  $('alarmTookBtn').addEventListener('click', () => {
+    stopRinging();
+    tryRecordDose();
+  });
+  $('alarmDismissBtn').addEventListener('click', stopRinging);
+
+  /* =========================================================
+     Android app: setup checklist and messages from Java
+     ========================================================= */
+  const SETUP_ITEMS = [
+    { key: 'notifications', title: 'Notifications', why: 'Without this the alarm cannot show or ring.' },
+    { key: 'exactAlarms', title: 'Alarms & reminders', why: 'Lets the alarm ring at the exact minute.' },
+    { key: 'fullScreen', title: 'Full-screen alarm', why: 'Shows the alarm over the lock screen.' },
+    { key: 'battery', title: 'Battery: unrestricted', why: 'Stops the phone from delaying the alarm to save battery.' }
+  ];
+
+  function renderSetup() {
+    if (!native) return;
+    let status = {};
+    try { status = JSON.parse(native.getSetupStatus()); } catch (e) { return; }
+
+    const missing = SETUP_ITEMS.filter((item) => status[item.key] === false);
+    $('setupCard').hidden = missing.length === 0;
+    const list = $('setupList');
+    list.replaceChildren();
+
+    missing.forEach((item) => {
+      const li = document.createElement('li');
+      li.className = 'setup-item';
+      const text = document.createElement('div');
+      const strong = document.createElement('strong');
+      strong.textContent = item.title;
+      const why = document.createElement('span');
+      why.textContent = item.why;
+      text.append(strong, why);
+      const fix = document.createElement('button');
+      fix.className = 'btn btn-small';
+      fix.type = 'button';
+      fix.textContent = 'Allow';
+      fix.addEventListener('click', () => native.openSetup(item.key));
+      li.append(text, fix);
+      list.append(li);
+    });
+  }
+
+  // Java calls this with 'resume' (app came back to the screen)
+  // or 'took' (you pressed "I took it" on the alarm).
+  window.onNativeEvent = function (name) {
+    if (name === 'took') {
+      markReminderDone();
+      tryRecordDose();
+    }
+    renderSetup();
+    tick();
+  };
+
+  /* =========================================================
+     Clock
+     ========================================================= */
+  function tick() {
+    if (dayKey(Date.now()) !== renderedDay) renderDoses();
+    else updateSinceLast();
+    checkAlarm();
+    if (draftHours === null) renderReminder();
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) tick();
+  });
+
+  if (native) {
+    $('alarmNote').textContent = 'The alarm rings even when the app is closed or the screen is off.';
+    // Make sure the phone's alarm matches what is saved here
+    if (hasActiveReminder() && reminder.at > Date.now()) native.scheduleAlarm(String(reminder.at));
+    renderSetup();
+  } else {
+    document.addEventListener('pointerdown', unlockAudio);
+  }
+
+  drawDialMarks();
+  renderDoses();
+  checkAlarm();
+  renderReminder();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>

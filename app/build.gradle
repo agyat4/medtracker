@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.medtracker.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.medtracker.app"
+        minSdk 26
+        targetSdk 35
+        // Each cloud build gets a higher number, so a new APK installs over the old one
+        versionCode((System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger())
+        versionName "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+    }
+
+    // The same key signs every build. Android only lets an update install
+    // over the old app (keeping your data) when the key matches.
+    signingConfigs {
+        release {
+            storeFile file('medtracker.keystore')
+            storePassword 'medtracker'
+            keyAlias 'medtracker'
+            keyPassword 'medtracker'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.13.1'
+    implementation 'androidx.webkit:webkit:1.12.1'
+}

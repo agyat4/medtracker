@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="glass">#FF2B1507</color>
+    <color name="glass_top">#FF5B2D0D</color>
+    <color name="ink">#FF17130F</color>
+    <color name="label">#FFFDFCF9</color>
+    <color name="orange">#FFFF6A13</color>
+    <color name="cap">#FFF2F1EE</color>
+    <color name="cap_ridge">#FFD2CFC8</color>
+</resources>
